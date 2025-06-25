@@ -6,83 +6,92 @@ import folium
 from streamlit_folium import st_folium
 from folium.plugins import MarkerCluster
 
-st.cache_data.clear()
-
-
+# Page config
 st.set_page_config(page_title="NH Site Mapping", layout="wide")
+st.title("📍 New Hampshire Site Mapping Dashboard")
 
+# Load data
 @st.cache_data
-def load_data():
+def load_general_data():
     return pd.read_excel("NH_site_data_comprehensive.xlsx")
 
-df = load_data()
+@st.cache_data
+def load_immigrant_data():
+    return pd.read_excel("NH_Immigrant_Youth_Support_Services_UPDATED.xlsx")
 
-st.title("\U0001F4CD New Hampshire Site Mapping Dashboard")
+general_df = load_general_data()
+immigrant_df = load_immigrant_data()
 
-# App mode selection
-app_mode = st.sidebar.selectbox('Contents', ['01 Organizations', '02 Organization Explorer'])
+# Sidebar structure
+app_mode = st.sidebar.selectbox('Contents', ['01 Organizations'])
 
 if app_mode == '01 Organizations':
-    st.header("\U0001F4C8 Organization Overview")
+    org_type = st.sidebar.radio("Select organization type:", ['General Organizations', 'Immigrant Support Organizations'])
 
-    categories = df["Category"].dropna().unique().tolist()
-    selected_cats = st.multiselect("Select Category", categories, default=categories)
+    if org_type == 'General Organizations':
+        general_mode = st.sidebar.selectbox("View Mode", ['Data', 'Explorer'])
 
-    filtered = df[df["Category"].isin(selected_cats)]
+        if general_mode == 'Data':
+            st.header("📊 General Organizations – Data View")
+            categories = general_df["Category"].dropna().unique().tolist()
+            selected_cats = st.multiselect("Select Category", categories, default=categories)
 
-    st.subheader(f"Showing {len(filtered)} Organizations")
-    st.dataframe(filtered, use_container_width=True)
+            filtered = general_df[general_df["Category"].isin(selected_cats)]
 
-    csv = filtered.to_csv(index=False).encode("utf-8")
-    st.download_button("\U0001F4E5 Download filtered data as CSV", csv, "nh_sites_filtered.csv", "text/csv")
+            st.subheader(f"Showing {len(filtered)} Organizations")
+            st.dataframe(filtered, use_container_width=True)
 
-    if st.checkbox("Show Map", value=False):
-        st.subheader("Geographical Overview")
+            csv = filtered.to_csv(index=False).encode("utf-8")
+            st.download_button("⬇️ Download filtered data as CSV", csv, "general_orgs_filtered.csv", "text/csv")
 
-        geolocator = Nominatim(user_agent="nh_site_mapper")
-        geocode = RateLimiter(geolocator.geocode, min_delay_seconds=1)
+        elif general_mode == 'Explorer':
+            st.header("🔍 General Organizations – Explorer")
+            categories = general_df["Category"].dropna().unique().tolist()
+            selected_category = st.selectbox("Select Category", ["--"] + categories)
 
-        m = folium.Map(location=[43.5, -71.5], zoom_start=7)
-        cluster = MarkerCluster().add_to(m)
+            sub_df = general_df[general_df["Category"] == selected_category] if selected_category != "--" else general_df
 
-        colors = {
-            "High School": "blue",
-            "Community College": "green",
-            "Youth-serving Organization": "purple",
-            "Workforce Intermediary": "orange",
-            "Apprenticeship Program": "red",
-            "Training Program": "darkred",
-            "Charter / STEM High School": "cadetblue",
-            "Community College System": "darkgreen"
-        }
+            selected_org = st.selectbox("Select Organization", ["--"] + sub_df["Organization Name"].tolist())
+            if selected_org != "--":
+                org_row = sub_df[sub_df["Organization Name"] == selected_org].iloc[0]
+                st.markdown("---")
+                st.subheader(f"Details for: {selected_org}")
+                st.markdown(f"**Contact Info:** {org_row['Contact Info']}")
+                st.markdown(f"**Programs Offered:** {org_row['Programs Offered']}")
+                st.markdown(f"**Location:** {org_row['Location']}")
+                st.markdown(f"**Description:** {org_row['Description']}")
+                st.markdown(f"**Website:** [{org_row['Website']}]({org_row['Website']})")
 
-        for _, row in filtered.iterrows():
-            location = geocode(row["Location"])
-            if location:
-                folium.Marker(
-                    location=[location.latitude, location.longitude],
-                    popup=f"{row['Organization Name']}<br>{row['Programs Offered']}",
-                    tooltip=row["Organization Name"],
-                    icon=folium.Icon(color=colors.get(row["Category"], "gray"))
-                ).add_to(cluster)
+    elif org_type == 'Immigrant Support Organizations':
+        imm_mode = st.sidebar.selectbox("View Mode", ['Data', 'Explorer'])
 
-        st_folium(m, width=900, height=550)
+        if imm_mode == 'Data':
+            st.header("🧩 Immigrant Support Organizations – Data View")
+            categories = immigrant_df["Category"].dropna().unique().tolist()
+            selected_cats = st.multiselect("Select Category", categories, default=categories)
 
-elif app_mode == '02 Organization Explorer':
-    st.header("\U0001F50D Explore Individual Organizations")
+            filtered = immigrant_df[immigrant_df["Category"].isin(selected_cats)]
 
-    categories = df["Category"].dropna().unique().tolist()
-    selected_category = st.selectbox("Select Category", ["--"] + categories)
+            st.subheader(f"Showing {len(filtered)} Organizations")
+            st.dataframe(filtered, use_container_width=True)
 
-    sub_df = df[df["Category"] == selected_category] if selected_category != "--" else df
+            csv = filtered.to_csv(index=False).encode("utf-8")
+            st.download_button("⬇️ Download filtered data as CSV", csv, "immigrant_support_orgs.csv", "text/csv")
 
-    if selected_category != "--":
-        selected_org = st.selectbox("Select Organization", ["--"] + sub_df["Organization Name"].tolist())
-        if selected_org != "--":
-            org_row = sub_df[sub_df["Organization Name"] == selected_org].iloc[0]
-            st.markdown("---")
-            st.subheader(f"Details for: {selected_org}")
-            st.markdown(f"**Contact Info:** {org_row['Contact Info']}")
-            st.markdown(f"**Programs Offered:** {org_row['Programs Offered']}")
-            st.markdown(f"**Location:** {org_row['Location']}")
-            st.markdown(f"**Description:** {org_row['Description']}")
+        elif imm_mode == 'Explorer':
+            st.header("🔍 Immigrant Support Organizations – Explorer")
+            categories = immigrant_df["Category"].dropna().unique().tolist()
+            selected_category = st.selectbox("Select Category", ["--"] + categories)
+
+            sub_df = immigrant_df[immigrant_df["Category"] == selected_category] if selected_category != "--" else immigrant_df
+
+            selected_org = st.selectbox("Select Organization", ["--"] + sub_df["Organization Name"].tolist())
+            if selected_org != "--":
+                org_row = sub_df[sub_df["Organization Name"] == selected_org].iloc[0]
+                st.markdown("---")
+                st.subheader(f"Details for: {selected_org}")
+                st.markdown(f"**Contact Info:** {org_row['Contact Info']}")
+                st.markdown(f"**Programs Offered:** {org_row['Programs Offered']}")
+                st.markdown(f"**Location:** {org_row['Location']}")
+                st.markdown(f"**Description:** {org_row['Description']}")
+                st.markdown(f"**Website:** [{org_row['Website']}]({org_row['Website']})")
