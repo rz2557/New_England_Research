@@ -6,6 +6,7 @@ import folium
 from streamlit_folium import st_folium
 from folium.plugins import MarkerCluster
 
+st.cache_data.clear()
 # Page config
 st.set_page_config(page_title="NH Site Mapping", layout="wide")
 st.title("📍 New Hampshire Site Mapping Dashboard")
