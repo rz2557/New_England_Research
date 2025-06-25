@@ -11,12 +11,11 @@ st.cache_data.clear()
 st.set_page_config(page_title="NH Site Mapping", layout="wide")
 st.title("📍 New Hampshire Site Mapping Dashboard")
 
-# Load data
-@st.cache_data
+
 def load_general_data():
     return pd.read_excel("NH_site_data_comprehensive.xlsx")
 
-@st.cache_data
+
 def load_immigrant_data():
     return pd.read_excel("NH_Immigrant_Youth_Support_Services_UPDATED.xlsx")
 
